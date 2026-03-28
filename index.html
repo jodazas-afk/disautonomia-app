@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Seguimiento Disautonomía</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --teal: #1D9E75; --teal-dk: #0F6E56; --teal-lt: #E1F5EE;
+  --amber: #BA7517; --amber-lt: #FAEEDA;
+  --red: #E24B4A; --red-lt: #FCEBEB;
+  --border: #D3D1C7; --bg: #F8F7F4; --surface: #FFFFFF;
+  --text: #1A1A18; --muted: #5F5E5A; --hint: #888780;
+}
+html { font-size: 16px; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 40px; }
+.app { max-width: 430px; margin: 0 auto; padding: 20px 16px; }
+.app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.app-header-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--teal); display: flex; align-items: center; justify-content: center; }
+.app-header-icon svg { width: 20px; height: 20px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; }
+.app-header h1 { font-size: 16px; font-weight: 600; color: var(--text); }
+.app-header p { font-size: 12px; color: var(--muted); }
+.step-bar { display: flex; gap: 4px; margin-bottom: 20px; }
+.step-dot { flex: 1; height: 3px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+.step-dot.done { background: var(--teal); }
+.step-dot.active { background: #5DCAA5; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 12px; }
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--hint); margin-bottom: 4px; }
+.step-title { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.instruction-box { background: var(--teal-lt); border-left: 3px solid var(--teal); border-radius: 0 8px 8px 0; padding: 12px 14px; margin-bottom: 22px; }
+.instruction-box p { font-size: 13px; color: #085041; line-height: 1.65; }
+.instruction-box p+p { margin-top: 8px; }
+.instruction-box strong { font-weight: 600; }
+.field-group { margin-bottom: 18px; }
+.field-label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; font-weight: 500; }
+.text-input { width: 100%; font-size: 17px; font-weight: 500; border: 1.5px solid var(--border); border-radius: 10px; padding: 13px 16px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; }
+.text-input:focus { border-color: var(--teal); background: white; }
+.date-input { width: 100%; font-size: 17px; font-weight: 500; border: 1.5px solid var(--border); border-radius: 10px; padding: 13px 16px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; }
+.date-input:focus { border-color: var(--teal); background: white; }
+.edad-tag { font-size: 13px; color: var(--teal-dk); font-weight: 500; margin-top: 6px; min-height: 20px; display: block; }
+.slider-row { margin-bottom: 20px; }
+.slider-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.slider-name { font-size: 14px; color: var(--text); line-height: 1.3; max-width: 80%; }
+.slider-val { font-size: 22px; font-weight: 700; color: var(--teal-dk); min-width: 28px; text-align: right; }
+.scale-ends { display: flex; justify-content: space-between; margin-top: 4px; }
+.scale-ends span { font-size: 10px; color: var(--hint); }
+input[type=range] { width: 100%; height: 5px; appearance: none; -webkit-appearance: none; background: var(--border); border-radius: 3px; outline: none; cursor: pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--teal); border: 3px solid white; box-shadow: 0 1px 4px rgba(0,0,0,.2); cursor: pointer; }
+input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--teal); border: 3px solid white; cursor: pointer; }
+input[type=range]:disabled { opacity: 0.35; }
+.num-grid { display: grid; gap: 10px; margin-bottom: 16px; }
+.num-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+.num-field label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; font-weight: 500; }
+.num-field input[type=number] { width: 100%; font-size: 24px; font-weight: 700; text-align: center; border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 6px; color: var(--text); background: var(--bg); outline: none; -moz-appearance: textfield; }
+.num-field input[type=number]::-webkit-outer-spin-button,
+.num-field input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+.num-field input[type=number]:focus { border-color: var(--teal); background: white; }
+.time-block { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; background: var(--bg); }
+.time-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.time-label { font-size: 14px; font-weight: 600; color: var(--text); }
+.no-tolerate-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; }
+.no-tolerate-label input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; }
+.checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.chk-item { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; transition: border-color .15s, background .15s; user-select: none; }
+.chk-item:active { transform: scale(0.97); }
+.chk-item.checked { border-color: var(--teal); background: var(--teal-lt); }
+.chk-box { width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; transition: background .15s, border-color .15s; }
+.chk-item.checked .chk-box { background: var(--teal); border-color: var(--teal); }
+.chk-box svg { width: 12px; height: 12px; stroke: white; stroke-width: 2.5; fill: none; display: none; }
+.chk-item.checked .chk-box svg { display: block; }
+.chk-text { font-size: 13px; color: var(--text); line-height: 1.3; }
+.chk-item-full { margin-top: 8px; }
+.other-input { margin-top: 10px; width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 14px; color: var(--text); background: var(--bg); outline: none; font-family: inherit; }
+.other-input:focus { border-color: var(--teal); background: white; }
+.ohdas-other-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); margin-top: 8px; cursor: pointer; user-select: none; }
+.ohdas-other-label input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--teal); cursor: pointer; }
+.btn-primary { width: 100%; padding: 17px; border-radius: 13px; background: var(--teal); color: white; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: background .15s, transform .1s; margin-top: 10px; font-family: inherit; }
+.btn-primary:hover { background: var(--teal-dk); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-secondary { width: 100%; padding: 14px; border-radius: 10px; background: transparent; color: var(--muted); border: 1.5px solid var(--border); font-size: 14px; cursor: pointer; margin-top: 8px; font-family: inherit; transition: background .15s; }
+.btn-secondary:hover { background: var(--teal-lt); border-color: var(--teal); color: var(--teal-dk); }
+.step-nav { display: flex; gap: 8px; margin-top: 6px; }
+.alert-banner { border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+.alert-warning { background: var(--amber-lt); border: 1px solid #E8A020; }
+.alert-ok { background: var(--teal-lt); border: 1px solid var(--teal); }
+.alert-icon { font-size: 18px; line-height: 1; margin-top: 1px; }
+.alert-text { font-size: 14px; font-weight: 600; color: #6B3A06; line-height: 1.4; }
+.alert-text.ok { color: var(--teal-dk); }
+.result-metric { background: var(--bg); border-radius: 10px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border: 1px solid var(--border); }
+.metric-name { font-size: 13px; color: var(--muted); line-height: 1.3; max-width: 55%; }
+.metric-val { font-size: 26px; font-weight: 700; color: var(--text); }
+.metric-delta { font-size: 12px; font-weight: 600; }
+.delta-up { color: var(--red); }
+.delta-down { color: var(--teal); }
+.delta-same { color: var(--hint); }
+.event-item { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); line-height: 1.5; display: flex; align-items: flex-start; gap: 10px; }
+.event-item:last-child { border-bottom: none; }
+.event-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); margin-top: 5px; flex-shrink: 0; }
+.footnote { font-size: 11px; color: var(--hint); margin-top: 10px; line-height: 1.5; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div class="app-header-icon">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+    <div>
+      <h1>Seguimiento Disautonomía</h1>
+      <p>Registro domiciliario · OHQ + Ortostatismo</p>
+    </div>
+  </div>
+  <div class="step-bar" id="stepBar"></div>
+  <div id="stepContent"></div>
+</div>
+
+<script>
+const TELEGRAM_TOKEN = '8623869488:AAGNVcRlI0qUVv9lcLv2sSYREX5ihhqtdQE';
+const TELEGRAM_CHAT  = '5995245556';
+const STEPS = ['registro','ohsa','ohdas','reposo','orto','sintomas','resultado'];
+const OHSA_ITEMS = [
+  'Mareos / presíncope',
+  'Alteraciones visuales (visión borrosa)',
+  'Debilidad',
+  'Agotamiento o fatiga',
+  'Dificultad de concentración',
+  'Molestias en cabeza/cuello'
+];
+const OHDAS_ITEMS = [
+  'Estar de pie (corto tiempo)',
+  'Estar de pie (largo tiempo)',
+  'Caminar (corto tiempo)',
+  'Caminar (largo tiempo)'
+];
+const SINTOMAS = ['Mareo','Palpitaciones','Visión borrosa','Debilidad','Náuseas','Dolor torácico','Fatiga'];
+const ORTO_TIMES = [
+  {label:'1 minuto',key:'t1'},{label:'3 minutos',key:'t3'},
+  {label:'5 minutos',key:'t5'},{label:'10 minutos (opcional)',key:'t10'}
+];
+/* ── Basal (localStorage por RUT) ── */
+function getRutKey(rut){ return 'disauto_'+(rut||'sinrut').replace(/[^0-9kK]/g,''); }
+function loadRegistros(rut){ try{const v=localStorage.getItem(getRutKey(rut));return v?JSON.parse(v):{registros:[]}}catch(e){return {registros:[]};} }
+function saveRegistro(rut,datos){ try{const d=loadRegistros(rut);d.registros.push(datos);localStorage.setItem(getRutKey(rut),JSON.stringify(d));}catch(e){} }
+function loadBasal(rut){ const d=loadRegistros(rut);return d.registros.length>0?d.registros[0]:null; }
+function getNumRegistro(rut){ return loadRegistros(rut).registros.length+1; }
+function ordinal(n){ const o=['primero','segundo','tercero','cuarto','quinto','sexto','séptimo','octavo','noveno','décimo'];return n<=10?o[n-1]:n+'°'; }
+const CHECK = `<svg viewBox="0 0 12 10"><polyline points="1,5 4,8 11,1"/></svg>`;
+
+function freshState() {
+  return {
+    step:0, nombre:'', rut:'', fecha_nac:'',
+    ohsa:[5,5,5,5,5,5], ohdas:[5,5,5,5],
+    ohdas_other:[false,false,false,false],
+    reposo:{fc:'',pas:'',pad:''},
+    orto:{
+      t1:{fc:'',pas:'',pad:'',skip:false}, t3:{fc:'',pas:'',pad:'',skip:false},
+      t5:{fc:'',pas:'',pad:'',skip:false}, t10:{fc:'',pas:'',pad:'',skip:false}
+    },
+    sintomas:[], otros_text:''
+  };
+}
+let state = freshState();
+
+function calcEdad(f) {
+  if (!f) return null;
+  const h=new Date(), n=new Date(f+'T00:00:00');
+  if (isNaN(n)) return null;
+  let a=h.getFullYear()-n.getFullYear(), m=h.getMonth()-n.getMonth(), d=h.getDate()-n.getDate();
+  if (d<0){m--;d+=new Date(h.getFullYear(),h.getMonth(),0).getDate();}
+  if (m<0){a--;m+=12;}
+  return {anios:a,meses:m,dias:d};
+}
+function formatRut(v) {
+  v=v.replace(/[^0-9kK]/g,'');
+  if(v.length<=1) return v;
+  const dv=v.slice(-1).toUpperCase();
+  const c=v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return c+'-'+dv;
+}
+function calcOHSA() { return state.ohsa.reduce((a,b)=>a+b,0)/state.ohsa.length; }
+function calcOHDAS() {
+  const v=state.ohdas.filter((_,i)=>!state.ohdas_other[i]);
+  return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;
+}
+function detectEvents() {
+  const ev=[], rf=parseFloat(state.reposo.fc)||0, rp=parseFloat(state.reposo.pas)||0, rd=parseFloat(state.reposo.pad)||0;
+  let fP=false,fD=false,fF=false;
+  for(const {label,key} of ORTO_TIMES){
+    const t=state.orto[key]; if(t.skip) continue;
+    const fc=parseFloat(t.fc)||0, pas=parseFloat(t.pas)||0, pad=parseFloat(t.pad)||0;
+    const lbl=label.replace(' (opcional)','');
+    if(!fP&&rp&&pas&&(rp-pas)>20){ev.push(`Caída de presión sistólica >20 mmHg en ${lbl}`);fP=true;}
+    if(!fD&&rd&&pad&&(rd-pad)>=10){ev.push(`Caída de presión diastólica ≥10 mmHg en ${lbl}`);fD=true;}
+    if(!fF&&rf&&fc&&(fc-rf)>=40){ev.push(`Aumento de frecuencia cardíaca ≥40 lpm en ${lbl}`);fF=true;}
+  }
+  return ev;
+}
+
+function buildStepBar() {
+  document.getElementById('stepBar').innerHTML=STEPS.map((_,i)=>{
+    const c=i<state.step?'done':i===state.step?'active':'';
+    return `<div class="step-dot ${c}"></div>`;
+  }).join('');
+}
+
+function render() {
+  buildStepBar();
+  const s=STEPS[state.step], c=document.getElementById('stepContent');
+  const map={registro:renderRegistro,ohsa:renderOHSA,ohdas:renderOHDAS,reposo:renderReposo,orto:renderOrto,sintomas:renderSintomas,resultado:renderResultado};
+  c.innerHTML=map[s]();
+  attachEvents();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderRegistro() {
+  const edad=calcEdad(state.fecha_nac);
+  const es=edad?`Edad: ${edad.anios} años, ${edad.meses} meses, ${edad.dias} días`:'';
+  return `<div class="card">
+    <div class="section-label">Registro · Paso 1 de 6</div>
+    <div class="step-title">Datos del paciente</div>
+    <div class="instruction-box"><p>Ingresa tus datos para identificar este registro. Aparecerán en el informe para tu médico.</p></div>
+    <div class="field-group">
+      <label class="field-label">Nombre completo</label>
+      <input id="inp-nombre" class="text-input" type="text" value="${state.nombre}" placeholder="Ej: María González">
+    </div>
+    <div class="field-group">
+      <label class="field-label">RUT</label>
+      <input id="inp-rut" class="text-input" type="text" value="${state.rut}" placeholder="Ej: 12.345.678-9" maxlength="12">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Fecha de nacimiento</label>
+      <input id="inp-fecha" class="date-input" type="date" value="${state.fecha_nac}" max="${new Date().toISOString().split('T')[0]}">
+      <span class="edad-tag" id="edad-tag">${es}</span>
+    </div>
+    <button class="btn-primary" id="nextRegistro">Comenzar evaluación</button>
+  </div>`;
+}
+
+function renderOHSA() {
+  return `<div class="card">
+    <div class="section-label">Escala OHSA · Paso 2 de 6</div>
+    <div class="step-title">Síntomas ortostáticos</div>
+    <div class="instruction-box">
+      <p>Marque el número en la escala que mejor represente qué tan intensos han sido, en promedio, sus síntomas de hipotensión durante la <strong>última semana</strong>. Debe dar una respuesta para cada síntoma. Si no ha tenido el síntoma, marque el cero (0).</p>
+      <p><strong>Solo debe calificar los síntomas que se deban a su problema de hipotensión.</strong></p>
+    </div>
+    ${OHSA_ITEMS.map((item,i)=>`
+    <div class="slider-row">
+      <div class="slider-label"><span class="slider-name">${item}</span><span class="slider-val" id="ov${i}">${state.ohsa[i]}</span></div>
+      <input type="range" min="0" max="10" step="1" value="${state.ohsa[i]}" data-ohsa="${i}">
+      <div class="scale-ends"><span>0 — Ninguno</span><span>10 — Lo peor posible</span></div>
+    </div>`).join('')}
+    <div class="step-nav">
+      <button class="btn-secondary" id="prevOhsa" style="flex:1">Atrás</button>
+      <button class="btn-primary" id="nextOhsa" style="flex:2;margin-top:0">Continuar</button>
+    </div>
+  </div>`;
+}
+
+function renderOHDAS() {
+  return `<div class="card">
+    <div class="section-label">Escala OHDAS · Paso 3 de 6</div>
+    <div class="step-title">Impacto en actividades</div>
+    <div class="instruction-box">
+      <p>Nos interesa saber cómo los síntomas de hipotensión que presenta afectan su vida cotidiana. Califique cada ítem marcando el número que mejor represente cuánto han interferido, en promedio, los síntomas de hipotensión durante la <strong>última semana</strong> en la actividad.</p>
+      <p>Si no puede llevar a cabo la actividad <strong>por otros motivos que no sean la hipotensión</strong>, marque la casilla correspondiente.</p>
+    </div>
+    ${OHDAS_ITEMS.map((item,i)=>`
+    <div class="slider-row">
+      <div class="slider-label"><span class="slider-name">${item}</span><span class="slider-val" id="dv${i}">${state.ohdas[i]}</span></div>
+      <input type="range" min="0" max="10" step="1" value="${state.ohdas[i]}" data-ohdas="${i}" ${state.ohdas_other[i]?'disabled style="opacity:0.35"':''}>
+      <div class="scale-ends"><span>0 — Ninguna interferencia</span><span>10 — Total interferencia</span></div>
+      <label class="ohdas-other-label">
+        <input type="checkbox" data-other="${i}" ${state.ohdas_other[i]?'checked':''}> No lo puedo hacer por otros motivos
+      </label>
+    </div>`).join('')}
+    <div class="step-nav">
+      <button class="btn-secondary" id="prevOhdas" style="flex:1">Atrás</button>
+      <button class="btn-primary" id="nextOhdas" style="flex:2;margin-top:0">Continuar</button>
+    </div>
+  </div>`;
+}
+
+function renderReposo() {
+  return `<div class="card">
+    <div class="section-label">Medición en reposo · Paso 4 de 6</div>
+    <div class="step-title">Antes de levantarte</div>
+    <div class="instruction-box"><p>Tómala apenas despiertes, después de <strong>2–3 minutos en reposo</strong>, antes de levantarse.</p></div>
+    <div class="num-grid cols3">
+      <div class="num-field"><label>FC (lpm)</label><input type="number" id="r-fc" value="${state.reposo.fc}" placeholder="72" min="30" max="220"></div>
+      <div class="num-field"><label>PAS (mmHg)</label><input type="number" id="r-pas" value="${state.reposo.pas}" placeholder="120" min="50" max="250"></div>
+      <div class="num-field"><label>PAD (mmHg)</label><input type="number" id="r-pad" value="${state.reposo.pad}" placeholder="80" min="30" max="150"></div>
+    </div>
+    <div class="step-nav">
+      <button class="btn-secondary" id="prevReposo" style="flex:1">Atrás</button>
+      <button class="btn-primary" id="nextReposo" style="flex:2;margin-top:0">Continuar</button>
+    </div>
+  </div>`;
+}
+
+function renderOrto() {
+  return `<div class="card">
+    <div class="section-label">Test de ortostatismo · Paso 5 de 6</div>
+    <div class="step-title">Mediciones de pie</div>
+    <div class="instruction-box"><p>Párate y mide FC y presión arterial en cada tiempo indicado. Si no toleras algún tiempo, marca "No toleró".</p></div>
+    ${ORTO_TIMES.map(({label,key})=>{
+      const t=state.orto[key];
+      return `<div class="time-block">
+        <div class="time-block-header">
+          <span class="time-label">${label}</span>
+          <label class="no-tolerate-label"><input type="checkbox" data-skip="${key}" ${t.skip?'checked':''}> No toleró</label>
+        </div>
+        <div class="num-grid cols3 ${t.skip?'hidden':''}">
+          <div class="num-field"><label>FC (lpm)</label><input type="number" data-orto="${key}" data-field="fc" value="${t.fc}" placeholder="—" min="30" max="220"></div>
+          <div class="num-field"><label>PAS (mmHg)</label><input type="number" data-orto="${key}" data-field="pas" value="${t.pas}" placeholder="—" min="50" max="250"></div>
+          <div class="num-field"><label>PAD (mmHg)</label><input type="number" data-orto="${key}" data-field="pad" value="${t.pad}" placeholder="—" min="30" max="150"></div>
+        </div>
+      </div>`;
+    }).join('')}
+    <div class="step-nav">
+      <button class="btn-secondary" id="prevOrto" style="flex:1">Atrás</button>
+      <button class="btn-primary" id="nextOrto" style="flex:2;margin-top:0">Continuar</button>
+    </div>
+  </div>`;
+}
+
+function renderSintomas() {
+  return `<div class="card">
+    <div class="section-label">Síntomas durante la prueba · Paso 6 de 6</div>
+    <div class="step-title">¿Qué sentiste de pie?</div>
+    <div class="instruction-box"><p>Marca los síntomas que aparecieron durante el test de ortostatismo.</p></div>
+    <div class="checkbox-grid">
+      ${SINTOMAS.map(s=>{
+        const on=state.sintomas.includes(s);
+        return `<div class="chk-item ${on?'checked':''}" data-sint="${s}"><div class="chk-box">${CHECK}</div><span class="chk-text">${s}</span></div>`;
+      }).join('')}
+    </div>
+    <div class="chk-item chk-item-full ${state.sintomas.includes('Otros')?'checked':''}" data-sint="Otros">
+      <div class="chk-box">${CHECK}</div><span class="chk-text">Otros</span>
+    </div>
+    ${state.sintomas.includes('Otros')?`<input class="other-input" id="otrosText" placeholder="Describe el síntoma..." value="${state.otros_text}">`:'' }
+    <div class="step-nav" style="margin-top:16px;">
+      <button class="btn-secondary" id="prevSint" style="flex:1">Atrás</button>
+      <button class="btn-primary" id="calcular" style="flex:2;margin-top:0">Ver resultado</button>
+    </div>
+  </div>`;
+}
+
+function renderResultado() {
+  const ohsaVal=calcOHSA(), ohdasVal=calcOHDAS();
+  const numRegistro=getNumRegistro(state.rut);
+  const basal=loadBasal(state.rut);
+  const isPrimero=!basal;
+  saveRegistro(state.rut,{fecha:new Date().toISOString(),ohsa:ohsaVal,ohdas:ohdasVal,nombre:state.nombre});
+  const basalOhsa=basal?basal.ohsa:null;
+  const basalOhdas=basal?basal.ohdas:null;
+  const dOhsa=basalOhsa!==null?ohsaVal-basalOhsa:null;
+  const dOhdas=basalOhdas!==null&&ohdasVal!==null?ohdasVal-basalOhdas:null;
+  const events=detectEvents();
+  const consultar=!isPrimero&&((dOhsa!==null&&dOhsa>=1)||(dOhdas!==null&&dOhdas>=1));
+  const dc=d=>d>0?'delta-up':d<0?'delta-down':'delta-same';
+  const ds=d=>(d>0?'+':'')+d.toFixed(1);
+  return `<div>
+    ${isPrimero
+      ? `<div class="alert-banner alert-ok"><span class="alert-icon">📋</span><span class="alert-text ok">Primer registro guardado como basal. Las próximas veces verás la comparación.</span></div>`
+      : `<div class="alert-banner ${consultar?'alert-warning':'alert-ok'}"><span class="alert-icon">${consultar?'⚠️':'✅'}</span><span class="alert-text ${consultar?'':'ok'}">${consultar?'Se recomienda consultar precozmente con tu médico.':'Sin cambios que requieran consulta urgente.'}</span></div>`
+    }
+    <div class="card">
+      <div class="section-label">Resultado de hoy · Registro ${ordinal(numRegistro)}</div>
+      <div class="step-title" style="margin-bottom:14px;">Resumen</div>
+      <div class="result-metric">
+        <span class="metric-name">Promedio síntomas (OHSA)</span>
+        <div style="text-align:right">
+          <div class="metric-val">${ohsaVal.toFixed(1)}</div>
+          ${!isPrimero&&dOhsa!==null?`<div class="metric-delta ${dc(dOhsa)}">${ds(dOhsa)} vs basal</div>`:'<div class="metric-delta delta-same">Registro basal</div>'}
+        </div>
+      </div>
+      <div class="result-metric">
+        <span class="metric-name">Impacto funcional (OHDAS)</span>
+        <div style="text-align:right">
+          <div class="metric-val">${ohdasVal!==null?ohdasVal.toFixed(1):'—'}</div>
+          ${!isPrimero&&dOhdas!==null?`<div class="metric-delta ${dc(dOhdas)}">${ds(dOhdas)} vs basal</div>`:`<div class="metric-delta delta-same">${isPrimero?'Registro basal':'—'}</div>`}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">Eventos en ortostatismo</div>
+      ${events.length
+        ?`<div style="margin-top:8px;">${events.map(e=>`<div class="event-item"><div class="event-dot"></div><span>${e}</span></div>`).join('')}<p class="footnote">Datos informativos. Tu médico los interpretará en contexto clínico.</p></div>`
+        :`<p style="font-size:14px;color:var(--muted);margin-top:6px;">No se detectaron eventos significativos.</p>`}
+    </div>
+    ${state.sintomas.length?`<div class="card"><div class="section-label">Síntomas durante la prueba</div><p style="font-size:14px;color:var(--muted);margin-top:6px;line-height:1.6;">${state.sintomas.join(', ')}${state.otros_text?' — '+state.otros_text:''}</p></div>`:''}
+    <p id="mail-status" style="font-size:13px;text-align:center;margin-top:14px;min-height:18px;color:var(--muted);">Enviando informe al médico...</p>
+    <button class="btn-primary" id="btnPdf" style="margin-top:6px;">Descargar informe PDF</button>
+    <button class="btn-secondary" id="resetApp">+ Nuevo registro</button>
+  </div>`;
+}
+
+/* ── PDF builder ── */
+function buildPDF() {
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,M=18,CW=W-M*2; let y=20;
+  const T=[15,110,86],TL=[225,245,238],TD=[8,80,65];
+  const AM=[186,117,23],AML=[250,238,218];
+  const RD=[162,45,45],RL=[252,235,235];
+  const GR=[241,239,232],BD=[211,209,199];
+  const BK=[26,26,24],MT=[95,94,90],WH=[255,255,255];
+  const ohsaVal=calcOHSA(),ohdasVal=calcOHDAS();
+  const numRegistro=loadRegistros(state.rut).registros.length;
+  const basal=loadBasal(state.rut);
+  const isPrimero=numRegistro<=1;
+  const basalOhsa=basal?basal.ohsa:ohsaVal;
+  const basalOhdas=basal&&ohdasVal!==null?basal.ohdas:ohdasVal;
+  const dOhsa=ohsaVal-basalOhsa, dOhdas=ohdasVal!==null&&basalOhdas!==null?ohdasVal-basalOhdas:null;
+  const events=detectEvents(),consultar=!isPrimero&&((dOhsa>=1)||(dOhdas!==null&&dOhdas>=1));
+  const edad=calcEdad(state.fecha_nac);
+  const edadStr=edad?`${edad.anios} años, ${edad.meses} meses, ${edad.dias} dias`:'—';
+  const fechaReg=new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
+  const fnStr=state.fecha_nac?new Date(state.fecha_nac+'T00:00:00').toLocaleDateString('es-CL'):'—';
+  const sf=(s,st='normal',c=BK)=>{doc.setFontSize(s);doc.setFont('helvetica',st);doc.setTextColor(...c);};
+  const ln=(x1,y1,x2,y2c,c=BD)=>{doc.setDrawColor(...c);doc.setLineWidth(0.3);doc.line(x1,y1,x2,y2c);};
+  const rc=(x,y,w,h,f,s)=>{if(f){doc.setFillColor(...f);doc.rect(x,y,w,h,'F');}if(s){doc.setDrawColor(...s);doc.setLineWidth(0.3);doc.rect(x,y,w,h,'S');}};
+  const tx=(t,x,yy,o)=>doc.text(t,x,yy,o||undefined);
+  // Header
+  rc(M,y,CW,12,T);sf(14,'bold',WH);tx('Informe Clinico — Disautonomia',M+4,y+8);y+=15;
+  sf(9,'normal',MT);tx('Paciente:',M,y);sf(9,'bold',BK);tx(state.nombre||'—',M+22,y);
+  sf(9,'normal',MT);tx('RUT: '+(state.rut||'—'),M+90,y);tx(fechaReg,W-M,y,{align:'right'});y+=5;
+  sf(8,'normal',MT);tx('Fecha de nacimiento: '+fnStr+'   |   Edad: '+edadStr,M,y);y+=5;
+  sf(8,'bold',T);tx('Registro N° '+numRegistro+' ('+ordinal(numRegistro)+')',M,y);y+=5;
+  ln(M,y,W-M,y);y+=6;
+  // Banner
+  rc(M,y,CW,10,consultar?AML:TL,consultar?AM:T);sf(9,'bold',consultar?AM:T);
+  tx(consultar?'ALERTA: Empeoramiento significativo. Se recomienda consulta precoz.':'Sin cambios clinicamente significativos.',M+4,y+6.5);y+=15;
+  // Resumen
+  sf(11,'bold',T);tx('Resumen Ejecutivo',M,y);y+=7;
+  const sc=[60,30,25,25,30];
+  rc(M,y,CW,7,T);['Metrica','Valor hoy','Basal','Delta','Significativo'].reduce((cx,h,i)=>{sf(8,'bold',WH);tx(h,cx,y+5);return cx+sc[i];},M+2);y+=7;
+  [[`OHSA`,`${ohsaVal.toFixed(1)}/10`,isPrimero?"(basal)":String(basalOhsa.toFixed?basalOhsa.toFixed(1):basalOhsa),`${dOhsa>0?'+':''}${dOhsa.toFixed(1)}`,Math.abs(dOhsa)>=1?'Si':'No'],
+   [`OHDAS`,ohdasVal?`${ohdasVal.toFixed(1)}/10`:'—',isPrimero?"(basal)":String(basalOhdas!==null&&basalOhdas.toFixed?basalOhdas.toFixed(1):basalOhdas||"—"),dOhdas!=null?`${dOhdas>0?'+':''}${dOhdas.toFixed(1)}`:'—',dOhdas!=null?(Math.abs(dOhdas)>=1?'Si':'No'):'—']]
+  .forEach((row,ri)=>{rc(M,y,CW,7,ri%2?GR:WH);row.reduce((cx,cell,ci)=>{const isD=ci===3,dv=ri===0?dOhsa:dOhdas;sf(8,isD?'bold':'normal',isD&&dv!=null?(dv>=1?RD:dv<=-1?T:MT):BK);tx(cell,cx,y+5);return cx+sc[ci];},M+2);y+=7;});y+=6;
+  // OHSA
+  sf(10,'bold',T);tx('OHSA — Sintomas (0-10)',M,y);y+=5;
+  rc(M,y,CW,6,T);sf(7,'bold',WH);tx('Sintoma',M+2,y+4.5);tx('Pts',M+115,y+4.5);tx('Barra',M+124,y+4.5);y+=6;
+  OHSA_ITEMS.forEach((item,i)=>{rc(M,y,CW,6,i%2?GR:WH);sf(7,'normal',BK);tx(item,M+2,y+4.5);sf(7,'bold',T);tx(String(state.ohsa[i]),M+115,y+4.5);for(let b=0;b<10;b++)rc(M+124+(b*5.5),y+1.5,4.5,3,b<state.ohsa[i]?T:BD);y+=6;});
+  rc(M,y,CW,7,TL,T);sf(8,'bold',TD);tx(`Promedio: ${ohsaVal.toFixed(2)}   Basal: ${isPrimero?"(este registro)":basalOhsa.toFixed(1)}   Delta: ${dOhsa>0?'+':''}${dOhsa.toFixed(1)}`,M+4,y+5);y+=12;
+  // OHDAS
+  if(y>215){doc.addPage();y=20;}
+  sf(10,'bold',T);tx('OHDAS — Impacto Funcional (0-10)',M,y);y+=5;
+  rc(M,y,CW,6,T);sf(7,'bold',WH);tx('Actividad',M+2,y+4.5);tx('Pts',M+115,y+4.5);tx('Barra',M+124,y+4.5);y+=6;
+  OHDAS_ITEMS.forEach((item,i)=>{const io=state.ohdas_other[i];rc(M,y,CW,6,i%2?GR:WH);sf(7,'normal',BK);tx(item,M+2,y+4.5);if(io){sf(6,'normal',MT);tx('Otros motivos',M+115,y+4.5);}else{sf(7,'bold',T);tx(String(state.ohdas[i]),M+115,y+4.5);for(let b=0;b<10;b++)rc(M+124+(b*5.5),y+1.5,4.5,3,b<state.ohdas[i]?T:BD);}y+=6;});
+  rc(M,y,CW,7,TL,T);sf(8,'bold',TD);tx(ohdasVal?`Promedio: ${ohdasVal.toFixed(2)}   Basal: ${isPrimero?"(este registro)":basalOhdas!==null?basalOhdas.toFixed(1):"—"}   Delta: ${dOhdas>0?'+':''}${dOhdas.toFixed(1)}`:'Promedio OHDAS: —',M+4,y+5);y+=12;
+  // Reposo
+  if(y>210){doc.addPage();y=20;}
+  sf(10,'bold',T);tx('Medicion en Reposo',M,y);y+=5;
+  rc(M,y,CW,6,T);sf(7,'bold',WH);tx('Parametro',M+2,y+4.5);tx('Valor',M+85,y+4.5);tx('Referencia',M+120,y+4.5);y+=6;
+  [['Frecuencia cardiaca',state.reposo.fc?state.reposo.fc+' lpm':'—','60-100 lpm'],['Presion arterial sistolica',state.reposo.pas?state.reposo.pas+' mmHg':'—','<120 mmHg'],['Presion arterial diastolica',state.reposo.pad?state.reposo.pad+' mmHg':'—','<80 mmHg']]
+  .forEach((r,i)=>{rc(M,y,CW,6,i%2?GR:WH);sf(7,'normal',BK);tx(r[0],M+2,y+4.5);sf(7,'bold',T);tx(r[1],M+85,y+4.5);sf(6,'normal',MT);tx(r[2],M+120,y+4.5);y+=6;});y+=6;
+  // Ortostatismo
+  if(y>195){doc.addPage();y=20;}
+  sf(10,'bold',T);tx('Test Activo de Ortostatismo',M,y);y+=5;
+  const oc=[38,17,17,22,17,22,17];
+  rc(M,y,CW,6,T);['Tiempo','FC','dFC','PAS','dPAS','PAD','dPAD'].reduce((cx,h,i)=>{sf(7,'bold',WH);tx(h,cx,y+4.5);return cx+oc[i];},M+1);y+=6;
+  const rf2=parseFloat(state.reposo.fc)||0,rp2=parseFloat(state.reposo.pas)||0,rd2=parseFloat(state.reposo.pad)||0;
+  ORTO_TIMES.forEach(({label,key},ri)=>{
+    const t=state.orto[key];rc(M,y,CW,6,ri%2?GR:WH);let ox=M+1;
+    if(t.skip){sf(7,'normal',MT);tx(label.replace(' (opcional)',''),ox,y+4.5);tx('No toleró',ox+38,y+4.5);}
+    else{const fc=parseFloat(t.fc)||0,pas=parseFloat(t.pas)||0,pad=parseFloat(t.pad)||0;const dfc=t.fc?fc-rf2:null,dpas=t.pas?pas-rp2:null,dpad=t.pad?pad-rd2:null;[label.replace(' (opcional)',''),t.fc||'—',dfc!=null?(dfc>0?'+':'')+dfc:'—',t.pas||'—',dpas!=null?(dpas>0?'+':'')+dpas:'—',t.pad||'—',dpad!=null?(dpad>0?'+':'')+dpad:'—'].forEach((cell,ci)=>{const isr=(ci===2&&dfc!=null&&dfc>=40)||(ci===4&&dpas!=null&&dpas<=-20)||(ci===6&&dpad!=null&&dpad<=-10);sf(7,isr?'bold':'normal',isr?RD:BK);tx(String(cell),ox,y+4.5);ox+=oc[ci];});}
+    y+=6;
+  });y+=6;
+  // Eventos
+  if(y>235){doc.addPage();y=20;}
+  sf(10,'bold',T);tx('Eventos Detectados',M,y);y+=6;
+  if(events.length){events.forEach(ev=>{rc(M,y,CW,8,RL,RD);sf(8,'bold',RD);tx('• '+ev,M+4,y+5.5);y+=10;});sf(7,'normal',MT);tx('Datos informativos. Sin interpretacion diagnostica.',M,y);y+=7;}
+  else{sf(8,'normal',MT);tx('No se detectaron eventos hemodinamicos significativos.',M,y);y+=7;}
+  // Síntomas
+  if(state.sintomas.length){if(y>250){doc.addPage();y=20;}sf(10,'bold',T);tx('Sintomas Durante la Prueba',M,y);y+=6;rc(M,y,CW,9,AML,AM);sf(8,'normal',[107,58,6]);tx(state.sintomas.join(', ')+(state.otros_text?' — '+state.otros_text:''),M+4,y+6);y+=13;}
+  // Pie
+  if(y>262){doc.addPage();y=20;}
+  ln(M,y,W-M,y);y+=5;sf(7,'normal',MT);
+  tx('Generado el '+fechaReg+' — App Seguimiento Disautonomia',M,y);
+  tx('No constituye diagnostico.',W-M,y,{align:'right'});
+  return doc;
+}
+
+function generarPDF() {
+  const doc=buildPDF();
+  const fn=(state.nombre||'paciente').replace(/\s+/g,'_');
+  const fd=new Date().toISOString().split('T')[0];
+  doc.save(`informe_${fn}_${fd}.pdf`);
+}
+
+function enviarTelegram() {
+  const statusEl=document.getElementById('mail-status');
+  if(statusEl){statusEl.textContent='Enviando informe al médico...';statusEl.style.color='var(--muted)';}
+  const doc=buildPDF();
+  const pdfBlob=doc.output('blob');
+  const edad=calcEdad(state.fecha_nac);
+  const edadStr=edad?`${edad.anios} años, ${edad.meses} meses, ${edad.dias} dias`:'—';
+  const fechaReg=new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'});
+  const events=detectEvents();
+  const _ohsaV=calcOHSA(), _ohdasV=calcOHDAS();
+  const _numReg=loadRegistros(state.rut).registros.length;
+  const _basal=loadBasal(state.rut), _isPrimero=_numReg<=1;
+  const _bOhsa=_basal?_basal.ohsa:_ohsaV, _bOhdas=_basal&&_ohdasV!==null?_basal.ohdas:_ohdasV;
+  const dOhsa=_ohsaV-_bOhsa;
+  const ohdasVal=_ohdasV;
+  const dOhdas=ohdasVal!==null&&_bOhdas!==null?ohdasVal-_bOhdas:null;
+  const consultar=!_isPrimero&&((dOhsa>=1)||(dOhdas!==null&&dOhdas>=1));
+  const fn=(state.nombre||'paciente').replace(/\s+/g,'_');
+  const fd=new Date().toISOString().split('T')[0];
+  const fileName=`informe_${fn}_${fd}.pdf`;
+  const captionParts=[
+    `📋 *Informe Disautonomía — Registro N° ${_numReg} (${ordinal(_numReg)})*`,
+    `👤 ${state.nombre||'—'}`,
+    `🪪 RUT: ${state.rut||'—'}`,
+    `🎂 Edad: ${edadStr}`,
+    `📅 ${fechaReg}`,
+    consultar?'⚠️ *ALERTA: Se recomienda consulta precoz*':'✅ Sin cambios significativos'
+  ];
+  if(events.length) captionParts.push('\n*Eventos:*\n'+events.map(e=>'• '+e).join('\n'));
+  const caption=captionParts.join('\n');
+  const formData=new FormData();
+  formData.append('chat_id',TELEGRAM_CHAT);
+  formData.append('document',pdfBlob,fileName);
+  formData.append('caption',caption);
+  formData.append('parse_mode','Markdown');
+  fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendDocument`,{method:'POST',body:formData})
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.ok){if(statusEl){statusEl.textContent='✓ Informe enviado al médico correctamente.';statusEl.style.color='var(--teal-dk)';}}
+    else throw new Error(data.description||'Error');
+  })
+  .catch(err=>{
+    console.error('Telegram:',err);
+    if(statusEl){statusEl.textContent='⚠ No se pudo enviar. Descárgalo manualmente.';statusEl.style.color='var(--amber)';}
+  });
+}
+
+function attachEvents() {
+  const s=STEPS[state.step];
+  if(s==='registro'){
+    const iN=document.getElementById('inp-nombre'),iR=document.getElementById('inp-rut'),iF=document.getElementById('inp-fecha');
+    iN.focus();
+    iN.addEventListener('input',e=>{state.nombre=e.target.value;});
+    iR.addEventListener('input',e=>{const f=formatRut(e.target.value);e.target.value=f;state.rut=f;});
+    iF.addEventListener('input',e=>{
+      state.fecha_nac=e.target.value;
+      const edad=calcEdad(e.target.value);
+      const el=document.getElementById('edad-tag');
+      if(el) el.textContent=edad?`Edad: ${edad.anios} años, ${edad.meses} meses, ${edad.dias} días`:'';
+    });
+    document.getElementById('nextRegistro').addEventListener('click',()=>{
+      state.nombre=iN.value.trim();state.rut=iR.value.trim();state.fecha_nac=iF.value;
+      if(!state.nombre){iN.style.borderColor='var(--red)';iN.focus();return;}
+      state.step++;render();
+    });
+  }
+  if(s==='ohsa'){
+    document.querySelectorAll('[data-ohsa]').forEach(el=>el.addEventListener('input',e=>{const i=+e.target.dataset.ohsa;state.ohsa[i]=+e.target.value;document.getElementById('ov'+i).textContent=state.ohsa[i];}));
+    document.getElementById('prevOhsa').addEventListener('click',()=>{state.step--;render();});
+    document.getElementById('nextOhsa').addEventListener('click',()=>{state.step++;render();});
+  }
+  if(s==='ohdas'){
+    document.querySelectorAll('[data-ohdas]').forEach(el=>el.addEventListener('input',e=>{const i=+e.target.dataset.ohdas;state.ohdas[i]=+e.target.value;document.getElementById('dv'+i).textContent=state.ohdas[i];}));
+    document.querySelectorAll('[data-other]').forEach(el=>el.addEventListener('change',e=>{state.ohdas_other[+e.target.dataset.other]=e.target.checked;render();}));
+    document.getElementById('prevOhdas').addEventListener('click',()=>{state.step--;render();});
+    document.getElementById('nextOhdas').addEventListener('click',()=>{state.step++;render();});
+  }
+  if(s==='reposo'){
+    ['fc','pas','pad'].forEach(f=>document.getElementById('r-'+f).addEventListener('input',e=>{state.reposo[f]=e.target.value;}));
+    document.getElementById('prevReposo').addEventListener('click',()=>{state.step--;render();});
+    document.getElementById('nextReposo').addEventListener('click',()=>{state.step++;render();});
+  }
+  if(s==='orto'){
+    document.querySelectorAll('[data-skip]').forEach(el=>el.addEventListener('change',e=>{state.orto[e.target.dataset.skip].skip=e.target.checked;render();}));
+    document.querySelectorAll('[data-orto]').forEach(el=>el.addEventListener('input',e=>{state.orto[e.target.dataset.orto][e.target.dataset.field]=e.target.value;}));
+    document.getElementById('prevOrto').addEventListener('click',()=>{state.step--;render();});
+    document.getElementById('nextOrto').addEventListener('click',()=>{state.step++;render();});
+  }
+  if(s==='sintomas'){
+    document.querySelectorAll('[data-sint]').forEach(el=>el.addEventListener('click',()=>{
+      const sint=el.dataset.sint;
+      state.sintomas=state.sintomas.includes(sint)?state.sintomas.filter(x=>x!==sint):[...state.sintomas,sint];
+      render();
+    }));
+    document.getElementById('otrosText')?.addEventListener('input',e=>{state.otros_text=e.target.value;});
+    document.getElementById('prevSint').addEventListener('click',()=>{state.step--;render();});
+    document.getElementById('calcular').addEventListener('click',()=>{state.step++;render();enviarTelegram();});
+  }
+  if(s==='resultado'){
+    document.getElementById('btnPdf')?.addEventListener('click',generarPDF);
+    document.getElementById('resetApp').addEventListener('click',()=>{state=freshState();render();});
+  }
+}
+
+render();
+</script>
+</body>
+</html>
